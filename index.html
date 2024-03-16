@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Calculator</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+    }
+    .container {
+        width: 300px;
+        margin: 0 auto;
+    }
+    input[type="number"], select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+    }
+    .price-inputs {
+        margin-bottom: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div id="fixedInput">
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" value="1">
+        <label for="price">Price:</label>
+        <input type="number" id="price" value="0">
+    </div>
+    
+    <button id="addRow">+</button>
+    
+    <div class="price-inputs" id="dynamicInputs">
+        <!-- Dynamic inputs will be added here -->
+    </div>
+
+    <label for="closePrice">Last Traded Price:</label>
+    <input type="number" id="closePrice" value="65000">
+    
+    <label for="bal">Available Balance:</label>
+    <input type="number" id="bal" value="0">
+
+    <label for="leverage">Leverage:</label>
+    <input type="number" id="leverage" value="1">
+    
+    <label for="roi">ROI:</label>
+    <input type="number" id="roi" placeholder="Required to get Target Price">
+    
+    <label for="positionType">Position Type:</label>
+    <select id="positionType">
+        <option value="buy">Buy</option>
+        <option value="short">Short</option>
+    </select>
+    
+    <label for="marginType">Margin Type:</label>
+    <select id="marginType">
+        <option value="isolated">Isolated</option>
+        <option value="cross">Cross</option>
+    </select>
+    
+    
+    <label for="averagePrice">Average Price:</label>
+    <input type="number" id="averagePrice" disabled>
+    
+    <label for="totalQuantity">Total Quantity:</label>
+    <input type="number" id="totalQuantity" disabled>
+    
+    <label for="liquidPrice">Liquid Price:</label>
+    <input type="number" id="liquidPrice" disabled>
+    
+    <label for="profit">Profit:</label>
+    <input type="number" id="profit" disabled>
+    
+    <label for="targetPrice">Target Price:</label>
+    <input type="number" id="targetPrice" disabled>
+</div>
+
+<script>
+    // Get references to input elements
+    const fixedInput = document.getElementById('fixedInput');
+    const dynamicInputs = document.getElementById('dynamicInputs');
+    const leverageInput = document.getElementById('leverage');
+    const closePriceInput = document.getElementById('closePrice');
+    const positionTypeInput = document.getElementById('positionType');
+    const marginTypeInput = document.getElementById('marginType');
+    const roiInput = document.getElementById('roi');
+    const averagePriceInput = document.getElementById('averagePrice');
+    const totalQuantityInput = document.getElementById('totalQuantity');
+    const liquidPriceInput = document.getElementById('liquidPrice');
+    const profitInput = document.getElementById('profit');
+    const targetPriceInput = document.getElementById('targetPrice');
+    const addRowBtn = document.getElementById('addRow');
+    const quantityFixedInput = document.getElementById('quantity');
+    const priceFixedInput = document.getElementById('price');
+    const balanceInput = document.getElementById('bal');
+
+    // Add event listeners for input changes
+    leverageInput.addEventListener('input', updateOutputs);
+    closePriceInput.addEventListener('input', updateOutputs);
+    positionTypeInput.addEventListener('change', updateOutputs);
+    marginTypeInput.addEventListener('change', updateOutputs);
+    roiInput.addEventListener('input', updateOutputs);
+    addRowBtn.addEventListener('click', addRow);
+    balanceInput.addEventListener('input', updateOutputs);
+
+    // Function to update outputs
+    function updateOutputs() {
+        const leverage = parseFloat(leverageInput.value);
+        const closePrice = parseFloat(closePriceInput.value);
+        var roi = parseFloat(roiInput.value);
+        const positionType = positionTypeInput.value;
+        const marginType = marginTypeInput.value;
+        const bal = parseFloat(balanceInput.value)
+
+        // Calculate average price and total quantity
+        let total = parseFloat(quantityFixedInput.value) || 0;
+        let sum = parseFloat(priceFixedInput.value) || 0;
+        const dynamicInputs = document.querySelectorAll('.dynamic-input');
+        ave = 0
+        tot = 0
+        dynamicInputs.forEach(input => {
+            q = parseFloat(input.querySelector('.dynamic-input-quantity').value) || 0
+            p = parseFloat(input.querySelector('.dynamic-input-price').value) || 0
+            tot += q;
+            ave += q/p;
+        });
+        let liquidPrice, profit, targetPrice;
+        aep = tot/ave
+        // Update average price and total quantity fields
+        averagePriceInput.value = isNaN(aep) ? '' : aep.toFixed(2);
+        totalQuantityInput.value = tot;
+
+        bl = isNaN(bal) ? 0 : parseFloat(bal)
+
+        bp = 1.0006 * tot / parseFloat((tot/aep) + bl)
+        
+        const quantity = total;
+        if (positionType === 'buy') {
+            profit = tot * (1/aep - 1/closePrice);
+            if (roi !== 0) {
+                targetPrice = aep * Math.pow((1 + roi / 100),1/leverage);
+            }
+            if (marginType == "isolated") 
+            liquidPrice = aep / (1 + 1/leverage - 0.005)
+            else
+            liquidPrice = tot * 1/(bl + (1 - 0.005)*tot/aep - 1000*0.0006/bp)
+        } else if (positionType === 'short') {
+            profit = tot * (1/closePrice - 1/aep);
+            if (roi !== 0) {
+                targetPrice = aep * Math.pow((1 - roi / 100),1/leverage);
+            }
+            if (marginType == "isolated") 
+            liquidPrice = aep * (1 - 1/leverage + 0.005)
+            else
+            liquidPrice = tot * 1/(-bl + (1 + 0.005)*tot/aep + 1000*0.0006/bp)
+        }
+        // Update output fields
+        roiInput.value = isNaN(roi) ? '' : roi.toFixed(2);
+        liquidPriceInput.value = isNaN(liquidPrice) ? '' : liquidPrice.toFixed(2);
+        profitInput.value = isNaN(profit) ? '' : profit.toFixed(2);
+        targetPriceInput.value = isNaN(targetPrice) ? '' : targetPrice.toFixed(2);
+    }
+
+    // Function to add another row of inputs
+    // Function to add another row of inputs
+    function addRow() {
+        const priceFixedInput = parseFloat(document.getElementById('price').value);
+        if (priceFixedInput == 0) {
+            alert("Price can not be 0")
+        }
+        else{
+            const newRow = document.createElement('div');
+            newRow.classList.add('price-inputs');
+            newRow.innerHTML = `
+                <label for="quantity">Quantity:</label>
+                <div class="dynamic-input">
+                <input type="number" class="dynamic-input-quantity" value="${quantityFixedInput.value}" disabled">
+                <label for="price">Price:</label>
+                <input type="number" class="dynamic-input-price" value="${priceFixedInput}" disabled">
+                </div>
+            `;
+            dynamicInputs.appendChild(newRow);
+            // Reset fixed input values
+            quantityFixedInput.value = 1;
+            priceFixedInput.value = 0;
+            updateOutputs();
+        }
+    }
+</script>
+
+</body>
+</html>
